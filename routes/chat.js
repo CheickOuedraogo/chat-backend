@@ -1,7 +1,6 @@
 import { Router } from "express";
 import sql from "../db/db.js";
 import { auth } from "./auth/auth.js";
-import { ioInstance } from '../index.js';
 
 const router = Router();
 
@@ -35,7 +34,6 @@ router.post("/", auth, async (req, res) => {
     return res.status(400).json({ error: "roomId et message sont requis." });
   }
   try {
-    // Vérifier que l'utilisateur est bien dans la room
     const room = await sql`SELECT * FROM chatrooms WHERE id = ${roomId} AND (participant1 = ${sender} OR participant2 = ${sender})`;
     if (room.length === 0) {
       return res.status(403).json({ error: "Vous n'avez pas accès à cette room." });
@@ -43,16 +41,6 @@ router.post("/", auth, async (req, res) => {
     const date = new Date();
     const state = "ok";
     await sql`INSERT INTO messages (room, message, date, sender, state) VALUES (${roomId}, ${message}, ${date}, ${sender}, ${state})`;
-    // Notifier l'autre participant par socket.io
-    const destinataire = room[0].participant1 === sender ? room[0].participant2 : room[0].participant1;
-    if (ioInstance) {
-      ioInstance.to(`user_${destinataire}`).emit("new_message_notification", {
-        roomId,
-        from: sender,
-        message,
-        date
-      });
-    }
     res.status(201).json({ response: "Message envoyé avec succès." });
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de l'envoi du message.", details: error.message });
@@ -68,7 +56,6 @@ router.put("/:id", auth, async (req, res) => {
     return res.status(400).json({ error: "Le message est requis." });
   }
   try {
-    // Vérifier que l'utilisateur est bien l'auteur
     const msg = await sql`SELECT * FROM messages WHERE id = ${messageId} AND sender = ${userId}`;
     if (msg.length === 0) {
       return res.status(403).json({ error: "Vous ne pouvez modifier que vos propres messages." });
