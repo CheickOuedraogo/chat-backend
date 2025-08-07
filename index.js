@@ -28,6 +28,31 @@ app.use((req, res, next) => {
 //routes
 app.use("/api", routes);
 
+// Documentation API sur '/'
+app.get('/', (req, res) => {
+  res.type('html').send(`
+    <h1>Bienvenue sur l'API Chat Backend</h1>
+    <p>Voici les principaux endpoints :</p>
+    <ul>
+      <li><b>POST /api/user</b> : inscription (username, email, password)</li>
+      <li><b>POST /api/user/connexion</b> : connexion (email, password)</li>
+      <li><b>GET /api/user</b> : liste/recherche utilisateurs</li>
+      <li><b>GET /api/user/id/:id</b> : infos utilisateur</li>
+      <li><b>POST /api/room</b> : créer une room</li>
+      <li><b>GET /api/room</b> : liste rooms</li>
+      <li><b>DELETE /api/room/:id</b> : supprimer/quitter une room</li>
+      <li><b>GET /api/chat/:id</b> : messages d'une room (pagination)</li>
+      <li><b>GET /api/chat/:id/search</b> : recherche de messages</li>
+      <li><b>POST /api/chat</b> : envoyer un message</li>
+      <li><b>PUT /api/chat/:id</b> : modifier un message</li>
+      <li><b>PATCH /api/chat/:id/state</b> : accusé de réception</li>
+      <li><b>DELETE /api/chat/:id</b> : supprimer un message</li>
+    </ul>
+    <p>Pour plus de détails, consultez le <a href="https://github.com/CheickOuedraogo/chat-backend#readme" target="_blank">README</a> ou le fichier <code>README.integration.md</code> du projet.</p>
+    <p>WebSocket (socket.io) disponible sur <b>/</b> (voir README pour les événements).</p>
+  `);
+});
+
 //middleware erreur
 app.use((req, res, next) => {
   res.status(404).json({
