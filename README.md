@@ -64,12 +64,12 @@ Ce projet est un backend Node.js/Express pour un système de chat interne avec g
 
 ### Utilisateurs
 
-| Méthode | Endpoint                  | Paramètres attendus                | Description                       |
-|---------|---------------------------|------------------------------------|-----------------------------------|
-| POST    | /api/user                 | body: { username, email, password }| Inscription                       |
-| POST    | /api/user/connexion       | body: { email, password }          | Connexion                         |
-| GET     | /api/user                 | query: search (optionnel)          | Liste/recherche utilisateurs      |
-| GET     | /api/user/id/:id          | path: id                           | Infos utilisateur                 |
+| Méthode | Endpoint                  | Paramètres attendus                                 | Description                       |
+|---------|---------------------------|-----------------------------------------------------|-----------------------------------|
+| POST    | /api/user                 | body: { username, nom, prenom, email, password }    | Inscription                       |
+| POST    | /api/user/connexion       | body: { email, password }                           | Connexion                         |
+| GET     | /api/user                 | query: search (optionnel)                           | Liste/recherche utilisateurs      |
+| GET     | /api/user/id/:id          | path: id                                            | Infos utilisateur                 |
 
 ### Rooms
 

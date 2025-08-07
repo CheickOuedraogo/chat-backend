@@ -20,6 +20,8 @@ async function initDb() {
     let result = await sql`CREATE TABLE IF NOT EXISTS users(
                 id SERIAL PRIMARY KEY,
                 username varchar(70) NOT NULL,
+                nom varchar(70),
+                prenom varchar(70),
                 email varchar(70) NOT NULL,
                 password varchar(60) NOT NULL
         );`;

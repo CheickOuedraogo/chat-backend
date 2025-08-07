@@ -5,15 +5,15 @@ import { generateToken } from "./auth/auth.js";
 
 const router = Router();
 
-// Recherche d'utilisateurs
+// Récupérer tous les utilisateurs (à restreindre en prod)
 router.get("/", async (req, res) => {
   const search = req.query.search || "";
   try {
     let response;
     if (search) {
-      response = await sql`SELECT id, username, email FROM users WHERE username ILIKE ${'%' + search + '%'} OR email ILIKE ${'%' + search + '%'} `;
+      response = await sql`SELECT id, username, nom, prenom, email FROM users WHERE username ILIKE ${'%' + search + '%'} OR nom ILIKE ${'%' + search + '%'} OR prenom ILIKE ${'%' + search + '%'} OR email ILIKE ${'%' + search + '%'} `;
     } else {
-      response = await sql`SELECT id, username, email FROM users`;
+      response = await sql`SELECT id, username, nom, prenom, email FROM users`;
     }
     res.status(200).json(response);
   } catch (error) {
@@ -28,7 +28,7 @@ router.get("/id/:id", async (req, res) => {
     return res.status(400).json({ error: "ID utilisateur invalide." });
   }
   try {
-    const response = await sql`SELECT id, username, email FROM users WHERE id = ${userId}`;
+    const response = await sql`SELECT id, username, nom, prenom, email FROM users WHERE id = ${userId}`;
     if (response.length === 0) {
       return res.status(404).json({ error: "Utilisateur non trouvé." });
     }
@@ -40,10 +40,16 @@ router.get("/id/:id", async (req, res) => {
 
 // Inscription
 router.post("/", async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, nom, prenom, email, password } = req.body;
   // Validation avancée
   if (!username || typeof username !== 'string' || username.trim().length < 2) {
     return res.status(400).json({ error: "username requis (au moins 2 caractères)." });
+  }
+  if (!nom || typeof nom !== 'string' || nom.trim().length < 2) {
+    return res.status(400).json({ error: "nom requis (au moins 2 caractères)." });
+  }
+  if (!prenom || typeof prenom !== 'string' || prenom.trim().length < 2) {
+    return res.status(400).json({ error: "prenom requis (au moins 2 caractères)." });
   }
   const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
   if (!email || !emailRegex.test(email)) {
@@ -55,11 +61,11 @@ router.post("/", async (req, res) => {
   const salt = 12;
   const hash = await bcrypt.hash(password, salt);
   try {
-    const response = await sql`INSERT INTO users (username, email, password) VALUES (${username},${email},${hash}) RETURNING id, username`;
+    const response = await sql`INSERT INTO users (username, nom, prenom, email, password) VALUES (${username},${nom},${prenom},${email},${hash}) RETURNING id, username, nom, prenom`;
     const toSign = { id: response[0].id, username: response[0].username };
     const token = generateToken(toSign);
     res.cookie("token", token, { signed: true, httpOnly: true });
-    res.status(201).json({ id: response[0].id, token });
+    res.status(201).json({ id: response[0].id, token, nom: response[0].nom, prenom: response[0].prenom });
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de l'inscription.", details: error.message });
   }
