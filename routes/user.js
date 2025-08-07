@@ -5,10 +5,16 @@ import { generateToken } from "./auth/auth.js";
 
 const router = Router();
 
-// Récupérer tous les utilisateurs (à restreindre en prod)
+// Recherche d'utilisateurs
 router.get("/", async (req, res) => {
+  const search = req.query.search || "";
   try {
-    const response = await sql`SELECT id, username, email FROM users`;
+    let response;
+    if (search) {
+      response = await sql`SELECT id, username, email FROM users WHERE username ILIKE ${'%' + search + '%'} OR email ILIKE ${'%' + search + '%'} `;
+    } else {
+      response = await sql`SELECT id, username, email FROM users`;
+    }
     res.status(200).json(response);
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de la récupération des utilisateurs.", details: error.message });
@@ -35,8 +41,16 @@ router.get("/id/:id", async (req, res) => {
 // Inscription
 router.post("/", async (req, res) => {
   const { username, email, password } = req.body;
-  if (!username || !email || !password) {
-    return res.status(400).json({ error: "username, email et password sont requis." });
+  // Validation avancée
+  if (!username || typeof username !== 'string' || username.trim().length < 2) {
+    return res.status(400).json({ error: "username requis (au moins 2 caractères)." });
+  }
+  const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  if (!email || !emailRegex.test(email)) {
+    return res.status(400).json({ error: "email invalide." });
+  }
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ error: "password requis (8 caractères minimum)." });
   }
   const salt = 12;
   const hash = await bcrypt.hash(password, salt);
@@ -54,8 +68,13 @@ router.post("/", async (req, res) => {
 // Connexion
 router.post("/connexion", async (req, res) => {
   const { email, password = "" } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: "email et password sont requis." });
+  // Validation avancée
+  const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  if (!email || !emailRegex.test(email)) {
+    return res.status(400).json({ error: "email invalide." });
+  }
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ error: "password requis (8 caractères minimum)." });
   }
   try {
     const response = await sql`SELECT * FROM users WHERE email = ${email}`;

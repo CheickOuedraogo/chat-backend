@@ -1,6 +1,7 @@
 import { Router } from "express";
 import sql from "../db/db.js";
 import { auth } from "./auth/auth.js";
+import { ioInstance } from '../index.js';
 
 const router = Router();
 
@@ -8,6 +9,9 @@ const router = Router();
 router.get("/:id", auth, async (req, res) => {
   const roomId = parseInt(req.params.id);
   const userId = parseInt(req.id);
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const offset = (page - 1) * limit;
   if (isNaN(roomId)) {
     return res.status(400).json({ error: "ID de room invalide." });
   }
@@ -16,7 +20,7 @@ router.get("/:id", auth, async (req, res) => {
     if (room.length === 0) {
       return res.status(403).json({ error: "Accès refusé à cette room." });
     }
-    const messages = await sql`SELECT * FROM messages WHERE room = ${roomId} ORDER BY date ASC`;
+    const messages = await sql`SELECT * FROM messages WHERE room = ${roomId} ORDER BY date ASC LIMIT ${limit} OFFSET ${offset}`;
     res.status(200).json(messages);
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de la récupération des messages.", details: error.message });
@@ -39,6 +43,16 @@ router.post("/", auth, async (req, res) => {
     const date = new Date();
     const state = "ok";
     await sql`INSERT INTO messages (room, message, date, sender, state) VALUES (${roomId}, ${message}, ${date}, ${sender}, ${state})`;
+    // Notifier l'autre participant par socket.io
+    const destinataire = room[0].participant1 === sender ? room[0].participant2 : room[0].participant1;
+    if (ioInstance) {
+      ioInstance.to(`user_${destinataire}`).emit("new_message_notification", {
+        roomId,
+        from: sender,
+        message,
+        date
+      });
+    }
     res.status(201).json({ response: "Message envoyé avec succès." });
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de l'envoi du message.", details: error.message });
@@ -78,6 +92,40 @@ router.patch("/:id/state", auth, async (req, res) => {
     res.status(200).json({ response: "État du message mis à jour." });
   } catch (error) {
     res.status(500).json({ error: "Erreur lors de la mise à jour de l'état du message.", details: error.message });
+  }
+});
+
+// Supprimer un message (seul l'auteur peut supprimer)
+router.delete("/:id", auth, async (req, res) => {
+  const messageId = parseInt(req.params.id);
+  const userId = parseInt(req.id);
+  try {
+    const msg = await sql`SELECT * FROM messages WHERE id = ${messageId} AND sender = ${userId}`;
+    if (msg.length === 0) {
+      return res.status(403).json({ error: "Vous ne pouvez supprimer que vos propres messages." });
+    }
+    await sql`DELETE FROM messages WHERE id = ${messageId}`;
+    return res.status(204).json();
+  } catch (error) {
+    res.status(500).json({ error: "Erreur lors de la suppression du message.", details: error.message });
+  }
+});
+
+// Recherche de messages dans une room
+router.get("/:id/search", auth, async (req, res) => {
+  const roomId = parseInt(req.params.id);
+  const userId = parseInt(req.id);
+  const q = req.query.q || "";
+  if (!q) return res.status(400).json({ error: "Requête de recherche manquante." });
+  try {
+    const room = await sql`SELECT * FROM chatrooms WHERE id = ${roomId} AND (participant1 = ${userId} OR participant2 = ${userId})`;
+    if (room.length === 0) {
+      return res.status(403).json({ error: "Accès refusé à cette room." });
+    }
+    const messages = await sql`SELECT * FROM messages WHERE room = ${roomId} AND message ILIKE ${'%' + q + '%'} ORDER BY date ASC`;
+    res.status(200).json(messages);
+  } catch (error) {
+    res.status(500).json({ error: "Erreur lors de la recherche de messages.", details: error.message });
   }
 });
 

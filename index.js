@@ -4,13 +4,26 @@ import CookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
+import cors from "cors"
 
 const app = express();
 const PORT = process.env.PORT || 5050;
 
 //middleware
 app.use(express.json());
+app.use(cors())
 app.use(CookieParser(process.env.COOKIE));
+
+// Middleware d'audit simple
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    if (["/api/user/connexion", "/api/user", "/api/chat", "/api/chat/", "/api/room", "/api/room/"].some(p => req.path.startsWith(p))) {
+      const user = req.id || req.body.email || req.body.username || 'anonyme';
+      console.log(`[AUDIT] ${new Date().toISOString()} | ${req.method} ${req.path} | user: ${user} | status: ${res.statusCode}`);
+    }
+  });
+  next();
+});
 
 //routes
 app.use("/api", routes);
@@ -22,6 +35,9 @@ app.use((req, res, next) => {
   });
 });
 
+// Ajout d'une référence à io pour l'utiliser dans les routes
+export let ioInstance = null;
+
 // Création du serveur HTTP et Socket.io
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
@@ -30,6 +46,7 @@ const io = new SocketIOServer(server, {
     methods: ["GET", "POST"]
   }
 });
+ioInstance = io;
 
 // Authentification simple par token pour le socket
 io.use((socket, next) => {

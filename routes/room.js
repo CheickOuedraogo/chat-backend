@@ -34,4 +34,21 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
+// Supprimer une room (seul un participant peut supprimer)
+router.delete("/:id", auth, async (req, res) => {
+  const roomId = parseInt(req.params.id);
+  const userId = parseInt(req.id);
+  try {
+    const room = await sql`SELECT * FROM chatrooms WHERE id = ${roomId} AND (participant1 = ${userId} OR participant2 = ${userId})`;
+    if (room.length === 0) {
+      return res.status(403).json({ error: "Vous ne pouvez supprimer que vos propres rooms." });
+    }
+    await sql`DELETE FROM messages WHERE room = ${roomId}`;
+    await sql`DELETE FROM chatrooms WHERE id = ${roomId}`;
+    return res.status(204).json();
+  } catch (error) {
+    res.status(500).json({ error: "Erreur lors de la suppression de la room.", details: error.message });
+  }
+});
+
 export default router;
