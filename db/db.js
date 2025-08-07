@@ -22,7 +22,7 @@ async function initDb() {
                 username varchar(70) NOT NULL,
                 nom varchar(70),
                 prenom varchar(70),
-                email varchar(70) NOT NULL,
+                email varchar(70) NOT NULL UNIQUE,
                 password varchar(60) NOT NULL
         );`;
     result = await sql`CREATE TABLE IF NOT EXISTS chatrooms(

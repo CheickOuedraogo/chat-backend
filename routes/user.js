@@ -61,12 +61,21 @@ router.post("/", async (req, res) => {
   const salt = 12;
   const hash = await bcrypt.hash(password, salt);
   try {
+    // Vérifier unicité de l'email avant insertion
+    const existing = await sql`SELECT id FROM users WHERE email = ${email}`;
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "Cet email est déjà utilisé." });
+    }
     const response = await sql`INSERT INTO users (username, nom, prenom, email, password) VALUES (${username},${nom},${prenom},${email},${hash}) RETURNING id, username, nom, prenom`;
     const toSign = { id: response[0].id, username: response[0].username };
     const token = generateToken(toSign);
     res.cookie("token", token, { signed: true, httpOnly: true });
     res.status(201).json({ id: response[0].id, token, nom: response[0].nom, prenom: response[0].prenom });
   } catch (error) {
+    // Gestion d'erreur pour violation de contrainte unique
+    if (error.code === '23505' && error.detail && error.detail.includes('email')) {
+      return res.status(409).json({ error: "Cet email est déjà utilisé." });
+    }
     res.status(500).json({ error: "Erreur lors de l'inscription.", details: error.message });
   }
 });
