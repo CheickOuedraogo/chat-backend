@@ -1,6 +1,6 @@
 # Chat Backend
 
-Ce projet est un backend Node.js/Express pour un système de chat interne avec gestion des utilisateurs, rooms, messages, authentification JWT, et stockage PostgreSQL.
+Ce projet est un backend Node.js/Express pour un système de chat interne avec gestion des utilisateurs, rooms, messages, authentification JWT, stockage PostgreSQL et chat en temps réel avec socket.io.
 
 ## Prérequis
 - Node.js >= 16
@@ -43,6 +43,7 @@ Ce projet est un backend Node.js/Express pour un système de chat interne avec g
 - Envoi, modification, récupération de messages
 - Accusés de réception (état du message : envoyé, reçu, lu)
 - Sécurité renforcée sur toutes les routes
+- **Chat en temps réel avec socket.io**
 
 ## Structure des routes principales
 
@@ -62,12 +63,62 @@ Ce projet est un backend Node.js/Express pour un système de chat interne avec g
 - `PUT /api/chat/:id` : modifier un message (id = id du message)
 - `PATCH /api/chat/:id/state` : changer l'état d'un message (`state` = ok, recu, lu)
 
+## Chat en temps réel (socket.io)
+
+Le backend expose un serveur WebSocket via socket.io pour permettre l'échange de messages instantanés.
+
+### Connexion côté client (exemple avec JavaScript)
+
+```js
+import { io } from "socket.io-client";
+
+const socket = io("http://localhost:5050", {
+  auth: {
+    token: "VOTRE_TOKEN_JWT"
+  }
+});
+
+// Rejoindre une room de chat (par exemple roomId = 1)
+socket.emit("join_room", 1);
+
+// Envoyer un message dans la room
+socket.emit("send_message", {
+  roomId: 1,
+  message: "Hello!",
+  sender: 123 // id utilisateur (optionnel, le backend peut le vérifier)
+});
+
+// Recevoir les messages instantanément	socket.on("receive_message", (data) => {
+  console.log("Nouveau message:", data);
+});
+
+// Mettre à jour l'état d'un message (ex: lu)
+socket.emit("message_state", {
+  roomId: 1,
+  messageId: 42,
+  state: "lu"
+});
+
+// Recevoir les mises à jour d'état	socket.on("message_state_update", (data) => {
+  console.log("État du message mis à jour:", data);
+});
+```
+
+### Points importants
+- Le token JWT est obligatoire pour se connecter au WebSocket.
+- Il faut rejoindre explicitement une room pour recevoir les messages de cette room.
+- Les événements principaux sont :
+  - `join_room` (rejoindre une room)
+  - `send_message` (envoyer un message)
+  - `receive_message` (recevoir un message)
+  - `message_state` (changer l'état d'un message)
+  - `message_state_update` (recevoir la mise à jour d'état)
+
 ## Notes
 - Toutes les routes sensibles nécessitent un token JWT valide (envoyé via cookie ou header Authorization).
 - Le backend initialise automatiquement les tables si elles n'existent pas.
 
 ## Améliorations possibles
-- Ajout du temps réel (WebSocket)
 - Pagination des messages
 - Suppression de messages
 - Recherche d'utilisateurs/messages
