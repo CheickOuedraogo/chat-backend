@@ -3,35 +3,34 @@ import sql from "../db/db.js";
 import { auth } from "./auth/auth.js";
 const router = Router();
 
-//route de teste a supprimer
-router.get("/test", async (req, res) => {
+// Récupérer toutes les rooms de l'utilisateur
+router.get("/", auth, async (req, res) => {
+  const id = parseInt(req.id);
   try {
-    const response = await sql`SELECT * FROM chatrooms C,users U WHERE C.participant1 = U.id OR C.participant2 = U.id `;
+    const response = await sql`SELECT * FROM chatrooms WHERE participant1 = ${id} OR participant2 = ${id}`;
     res.status(200).json(response);
   } catch (error) {
-    res.status(500).json(error);
+    res.status(500).json({ error: "Erreur lors de la récupération des rooms.", details: error.message });
   }
 });
 
-
-router.get("/",auth, async (req, res) => {
-    const id = parseInt(req.id) 
-  try {
-    const response = await sql`SELECT * FROM chatrooms WHERE participant1 = ${id} OR participant2 = ${id} `;
-    res.status(200).json(response);
-  } catch (error) {
-    res.status(500).json(error);
+// Créer une nouvelle room
+router.post("/", auth, async (req, res) => {
+  const id = parseInt(req.id);
+  const { participant } = req.body;
+  if (!participant) {
+    return res.status(400).json({ error: "Le participant est requis." });
   }
-});
-
-router.post("/",auth, async (req, res) => {
-  const { id = req.id, participant } = req.body;
   try {
-    const response =
-      await sql`INSERT INTO chatrooms (participant1, participant2) VALUES (${id},${participant})`;
-    res.status(201).json({ response: "Chat room bien creer" });
+    // Vérifier que la room n'existe pas déjà
+    const existing = await sql`SELECT * FROM chatrooms WHERE (participant1 = ${id} AND participant2 = ${participant}) OR (participant1 = ${participant} AND participant2 = ${id})`;
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "Une room existe déjà avec ce participant." });
+    }
+    await sql`INSERT INTO chatrooms (participant1, participant2) VALUES (${id}, ${participant})`;
+    res.status(201).json({ response: "Chat room bien créée." });
   } catch (error) {
-    res.status(500).json(error);
+    res.status(500).json({ error: "Erreur lors de la création de la room.", details: error.message });
   }
 });
 
