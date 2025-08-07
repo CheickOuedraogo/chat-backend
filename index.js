@@ -1,11 +1,15 @@
 import express from "express";
 import routes from "./routes/routes.js";
+import CookieParser from "cookie-parser";
+import jwt from "jsonwebtoken";
+
 
 const app = express();
 const PORT = process.env.PORT || 5050;
 
 //middleware
 app.use(express.json());
+app.use(CookieParser(process.env.COOKIE));
 
 //routes
 app.use("/api", routes);
