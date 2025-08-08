@@ -2,17 +2,15 @@ import express from "express";
 import routes from "./routes/routes.js";
 import CookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
-import http from "http";
-import { Server as SocketIOServer } from "socket.io";
-import cors from "cors"
+import cors from "cors";
 
 const app = express();
 const PORT = process.env.PORT || 5050;
 
 //middleware
 app.use(express.json());
-app.use(cors())
 app.use(CookieParser(process.env.COOKIE));
+<<<<<<< HEAD
 
 // Middleware d'audit simple
 app.use((req, res, next) => {
@@ -27,6 +25,9 @@ app.use((req, res, next) => {
 
 //routes
 app.use("/api", routes);
+=======
+app.use(cors());
+>>>>>>> d80ea80973becfb7dac318ec51cd918c072a1105
 
 // Documentation API sur '/'
 app.get('/', (req, res) => {
@@ -34,8 +35,13 @@ app.get('/', (req, res) => {
     <h1>Bienvenue sur l'API Chat Backend</h1>
     <p>Voici les principaux endpoints :</p>
     <ul>
+<<<<<<< HEAD
       <li><b>POST /api/user</b> : inscription (username, nom, prenom, phone_number, password, email optionnel)</li>
       <li><b>POST /api/user/connexion</b> : connexion (phone_number, password)</li>
+=======
+      <li><b>POST /api/user</b> : inscription (username, nom, prenom, email, password)</li>
+      <li><b>POST /api/user/connexion</b> : connexion (email, password)</li>
+>>>>>>> d80ea80973becfb7dac318ec51cd918c072a1105
       <li><b>GET /api/user</b> : liste/recherche utilisateurs</li>
       <li><b>GET /api/user/id/:id</b> : infos utilisateur</li>
       <li><b>POST /api/room</b> : créer une room</li>
@@ -48,11 +54,19 @@ app.get('/', (req, res) => {
       <li><b>PATCH /api/chat/:id/state</b> : accusé de réception</li>
       <li><b>DELETE /api/chat/:id</b> : supprimer un message</li>
     </ul>
+<<<<<<< HEAD
     <p><strong>Note :</strong> Le système utilise maintenant le numéro de téléphone avec l'indicatif du pays pour l'authentification (format: +[indicatif pays][numéro], ex: +33123456789)</p>
     <p>Pour plus de détails, consultez le <a href="https://github.com/CheickOuedraogo/chat-backend#readme" target="_blank">README</a> ou le fichier <code>README.integration.md</code> du projet.</p>
     <p>WebSocket (socket.io) disponible sur <b>/</b> (voir README pour les événements).</p>
+=======
+    <p><b>Note :</b> WebSocket (socket.io) n'est pas disponible sur Vercel. Utilisez les requêtes API pour les messages.</p>
+    <p>Pour plus de détails, consultez le <a href="https://github.com/CheickOuedraogo/chat-backend#readme" target="_blank">README</a>.</p>
+>>>>>>> d80ea80973becfb7dac318ec51cd918c072a1105
   `);
 });
+
+//routes
+app.use("/api", routes);
 
 //middleware erreur
 app.use((req, res, next) => {
@@ -61,58 +75,23 @@ app.use((req, res, next) => {
   });
 });
 
-// Ajout d'une référence à io pour l'utiliser dans les routes
-export let ioInstance = null;
-
-// Création du serveur HTTP et Socket.io
-const server = http.createServer(app);
-const io = new SocketIOServer(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
-ioInstance = io;
-
-// Authentification simple par token pour le socket
-io.use((socket, next) => {
-  const token = socket.handshake.auth?.token || socket.handshake.headers["authorization"]?.split(" ")[1];
-  if (!token) return next(new Error("Token manquant"));
-  try {
-    const decoded = jwt.verify(token, process.env.JWT);
-    socket.user = decoded;
-    next();
-  } catch (err) {
-    next(new Error("Token invalide"));
-  }
+// Middleware d'audit simple
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    if (["/api/user/connexion", "/api/user", "/api/chat", "/api/chat/", "/api/room", "/api/room/"].some(p => req.path.startsWith(p))) {
+      const user = req.id || req.body.email || req.body.username || 'anonyme';
+      console.log(`[AUDIT] ${new Date().toISOString()} | ${req.method} ${req.path} | user: ${user} | status: ${res.statusCode}`);
+    }
+  });
+  next();
 });
 
-io.on("connection", (socket) => {
-  // Joindre l'utilisateur à ses rooms (par id utilisateur)
-  socket.join(`user_${socket.user.id}`);
+// Pour Vercel : export de l'app
+export default app;
 
-  // Joindre à une room de chat spécifique
-  socket.on("join_room", (roomId) => {
-    socket.join(`room_${roomId}`);
-  });
-
-  // Réception d'un message et broadcast dans la room
-  socket.on("send_message", (data) => {
-    // data: { roomId, message, sender, ... }
-    io.to(`room_${data.roomId}`).emit("receive_message", data);
-  });
-
-  // Accusé de réception (état du message)
-  socket.on("message_state", (data) => {
-    // data: { messageId, state }
-    io.to(`room_${data.roomId}`).emit("message_state_update", data);
-  });
-});
-
+// Pour développement local
 if (process.env.NODE_ENV !== "production") {
-  server.listen(PORT, () => {
+  app.listen(PORT, () => {
     console.log("app listening on http://localhost:" + PORT);
   });
 }
-
-export default app;
