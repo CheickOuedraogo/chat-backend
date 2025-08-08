@@ -20,9 +20,10 @@ async function initDb() {
     let result = await sql`CREATE TABLE IF NOT EXISTS users(
                 id SERIAL PRIMARY KEY,
                 username varchar(70) NOT NULL,
+                phone_number varchar(20) NOT NULL UNIQUE,
                 nom varchar(70),
                 prenom varchar(70),
-                email varchar(70) NOT NULL UNIQUE,
+                email varchar(70),
                 password varchar(60) NOT NULL
         );`;
     result = await sql`CREATE TABLE IF NOT EXISTS chatrooms(

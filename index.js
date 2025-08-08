@@ -18,7 +18,7 @@ app.use(CookieParser(process.env.COOKIE));
 app.use((req, res, next) => {
   res.on('finish', () => {
     if (["/api/user/connexion", "/api/user", "/api/chat", "/api/chat/", "/api/room", "/api/room/"].some(p => req.path.startsWith(p))) {
-      const user = req.id || req.body.email || req.body.username || 'anonyme';
+      const user = req.id || req.body.phone_number || req.body.username || 'anonyme';
       console.log(`[AUDIT] ${new Date().toISOString()} | ${req.method} ${req.path} | user: ${user} | status: ${res.statusCode}`);
     }
   });
@@ -34,8 +34,8 @@ app.get('/', (req, res) => {
     <h1>Bienvenue sur l'API Chat Backend</h1>
     <p>Voici les principaux endpoints :</p>
     <ul>
-      <li><b>POST /api/user</b> : inscription (username, email, password)</li>
-      <li><b>POST /api/user/connexion</b> : connexion (email, password)</li>
+      <li><b>POST /api/user</b> : inscription (username, nom, prenom, phone_number, password, email optionnel)</li>
+      <li><b>POST /api/user/connexion</b> : connexion (phone_number, password)</li>
       <li><b>GET /api/user</b> : liste/recherche utilisateurs</li>
       <li><b>GET /api/user/id/:id</b> : infos utilisateur</li>
       <li><b>POST /api/room</b> : créer une room</li>
@@ -48,6 +48,7 @@ app.get('/', (req, res) => {
       <li><b>PATCH /api/chat/:id/state</b> : accusé de réception</li>
       <li><b>DELETE /api/chat/:id</b> : supprimer un message</li>
     </ul>
+    <p><strong>Note :</strong> Le système utilise maintenant le numéro de téléphone avec l'indicatif du pays pour l'authentification (format: +[indicatif pays][numéro], ex: +33123456789)</p>
     <p>Pour plus de détails, consultez le <a href="https://github.com/CheickOuedraogo/chat-backend#readme" target="_blank">README</a> ou le fichier <code>README.integration.md</code> du projet.</p>
     <p>WebSocket (socket.io) disponible sur <b>/</b> (voir README pour les événements).</p>
   `);
